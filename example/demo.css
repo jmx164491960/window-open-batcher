@@ -1,0 +1,6 @@
+.g-intercept-operate-tip {
+  position: fixed;
+  right: 4px;
+  top: 5px;
+  z-index: 9999999;
+}
