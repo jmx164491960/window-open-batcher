@@ -11,7 +11,7 @@ interface constructorParams {
 export default class OpenWindowBatcher {
     storageKey: string;
     seconds: number;
-    callback: Function;
+    callback: Function | null;
     constructor(params: constructorParams);
     check(): void;
     /**

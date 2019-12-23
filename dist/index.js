@@ -3,14 +3,14 @@ var OpenWindowBatcher = /** @class */ (function () {
         if (params === undefined)
             params = {};
         this.storageKey = params.storageKey || 'OpenWindowBatcher';
-        this.seconds = params.seconds * 1000 || 1000;
+        this.seconds = params.seconds || 1000;
         this.callback = params.callback || null;
     }
     OpenWindowBatcher.prototype.check = function () {
         var _this = this;
         var storageData = this.getStorageData();
         // 超时了不运行
-        if (this.isTimeout(storageData.time)) {
+        if (!storageData.time || this.isTimeout(storageData.time)) {
             return;
         }
         // 如果打开的页面在列表内
@@ -59,11 +59,14 @@ var OpenWindowBatcher = /** @class */ (function () {
      */
     OpenWindowBatcher.prototype.getStorageData = function () {
         var storageData;
+        if (!this.storageKey) {
+            return this.getNewStroageData();
+        }
         try {
-            storageData = JSON.parse(localStorage.getItem(this.storageKey)) || this.getNewStroageData();
+            storageData = JSON.parse(localStorage.getItem(this.storageKey) || '') || this.getNewStroageData();
         }
         catch (e) {
-            storageData = this.getNewStroageData();
+            return this.getNewStroageData();
         }
         return storageData;
     };
@@ -74,7 +77,7 @@ var OpenWindowBatcher = /** @class */ (function () {
         return {
             count: 0,
             hrefArr: [],
-            time: new Date().getTime()
+            time: 0
         };
     };
     /**
