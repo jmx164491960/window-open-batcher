@@ -13,21 +13,20 @@ interface constructorParams {
 export default class OpenWindowBatcher {
   storageKey: string
   seconds: number
-  callback: Function;
+  callback: Function | null;
   
   constructor (params: constructorParams) {
     if (params === undefined) params = {}
     this.storageKey = params.storageKey || 'OpenWindowBatcher'
-    this.seconds = params.seconds * 1000 || 1000;
+    this.seconds = params.seconds || 1000;
     this.callback = params.callback || null;
   }
   check() {
     const storageData = this.getStorageData();
     // 超时了不运行
-    if (this.isTimeout(storageData.time)) {
+    if (!storageData.time || this.isTimeout(storageData.time)) {
       return;
     }
-
     // 如果打开的页面在列表内
     const match = this.isMatchHref(storageData.hrefArr);
     if (match) {
@@ -76,10 +75,13 @@ export default class OpenWindowBatcher {
    */
   getStorageData(): storageDataParams {
     let storageData;
+    if (!this.storageKey) {
+      return this.getNewStroageData();
+    }
     try {
-      storageData = JSON.parse(localStorage.getItem(this.storageKey)) || this.getNewStroageData();
+      storageData = JSON.parse(localStorage.getItem(this.storageKey) || '') || this.getNewStroageData();
     } catch(e) {
-      storageData = this.getNewStroageData();
+      return this.getNewStroageData();
     }
     return storageData;
   }
@@ -90,7 +92,7 @@ export default class OpenWindowBatcher {
     return {
       count: 0,
       hrefArr: [],
-      time: new Date().getTime()
+      time: 0
     };
   }
   /**

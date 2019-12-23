@@ -1,55 +1,47 @@
-/**
- * 构造函数入参
- */
-interface constructorParams {
-    requestFn: Function;
-    staticTranslateData: object;
-    storageKey?: string;
-    expireTime?: number;
+interface storageDataParams {
+    count: number;
+    hrefArr: Array<string>;
+    time: number;
 }
-/**
- * 从前端缓存里获取国际化
- */
-export default class TranslateManager {
-    STORAGE_KEY: string;
-    expireTime: number;
-    requestFn: Function | null;
-    staticTranslateData: object;
-    /**
-     * 构造函数
-     * @param params
-     */
+interface constructorParams {
+    seconds?: number;
+    storageKey?: string;
+    callback?: Function;
+}
+export default class OpenWindowBatcher {
+    storageKey: string;
+    seconds: number;
+    callback: Function;
     constructor(params: constructorParams);
-    setRequestFn(fn: Function): void;
+    check(): void;
     /**
-     * 设置缓存
-     * @param {String} language
+     * 当前href是否命中
+     * @param hrefArr
      */
-    setCache(language: string, data: object): void;
+    isMatchHref(hrefArr: Array<string>): Boolean;
     /**
-     * 从缓存中读取
-     * @param language 语种
+     * 是否超时
+     * @param time
      */
-    getCache(language: string): any;
+    isTimeout(time: number): Boolean;
     /**
-     * 获取后端的静态国际化数据
+     * 获取当前localstroage对应命名空间
      */
-    getDynamicTranslateData(language: string): any;
+    getStorageData(): storageDataParams;
     /**
-     * 获取前后端交集后的国际化数据
-     * @param {*} language
+     * 获取一个初始化的对象
      */
-    getMergeTranslateData(language: string): any;
+    getNewStroageData(): storageDataParams;
     /**
-     * 深度合并
-     * @param d1
-     * @param d2
+     * 设置localstorage
+     * @param obj
      */
+    setStorageData(obj: storageDataParams): void;
     /**
      * 主方法
-     * @param locale 语种
-     * @param callback 回调函数，用于订制自己触发的渲染逻辑
+     * @param hrefArr 需要批量打开的链接数组
+     * @param callback 回调函数
      */
-    update(locale: string, callback: Function): any;
+    open(hrefArr: Array<string>, callback?: Function): void;
 }
 export {};

@@ -1,111 +1,122 @@
-import { isEmptyResult, jsonParse, isEqual } from './utils';
-import merge from 'lodash/merge';
-/**
- * 从前端缓存里获取国际化
- */
-var TranslateManager = /** @class */ (function () {
-    /**
-     * 构造函数
-     * @param params
-     */
-    function TranslateManager(params) {
-        this.expireTime = params.expireTime || Infinity; // 前端缓存有效时间
-        this.STORAGE_KEY = params.storageKey || 'TranslateManager';
-        this.requestFn = params.requestFn;
-        this.staticTranslateData = params.staticTranslateData || {};
+var OpenWindowBatcher = /** @class */ (function () {
+    function OpenWindowBatcher(params) {
+        if (params === undefined)
+            params = {};
+        this.storageKey = params.storageKey || 'OpenWindowBatcher';
+        this.seconds = params.seconds * 1000 || 1000;
+        this.callback = params.callback || null;
     }
-    TranslateManager.prototype.setRequestFn = function (fn) {
-        this.requestFn = fn;
-    };
-    /**
-     * 设置缓存
-     * @param {String} language
-     */
-    TranslateManager.prototype.setCache = function (language, data) {
-        // 请求完成后缓存
-        var storageData = jsonParse(localStorage.getItem(this.STORAGE_KEY)) || {};
-        storageData[language] = data;
-        storageData['time'] = new Date().getTime();
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(storageData));
-    };
-    /**
-     * 从缓存中读取
-     * @param language 语种
-     */
-    TranslateManager.prototype.getCache = function (language) {
-        var storageData = jsonParse(localStorage.getItem(this.STORAGE_KEY)) || {};
-        if (storageData && storageData['time'] && storageData[language]) {
-            var time = storageData['time'];
-            var now = new Date().getTime();
-            // 缓存只有两小时
-            if (now - time <= this.expireTime) {
-                return storageData[language] || null;
-            }
-        }
-        return null;
-    };
-    /**
-     * 获取后端的静态国际化数据
-     */
-    TranslateManager.prototype.getDynamicTranslateData = function (language) {
+    OpenWindowBatcher.prototype.check = function () {
         var _this = this;
-        if (!this.requestFn) {
-            console.error('请先执行setRequestFn!');
-            return Promise.reject();
+        var storageData = this.getStorageData();
+        // 超时了不运行
+        if (this.isTimeout(storageData.time)) {
+            return;
         }
-        return this.requestFn({ language: language }).then(function (res) {
-            _this.setCache(language, res);
-            return res;
+        // 如果打开的页面在列表内
+        var match = this.isMatchHref(storageData.hrefArr);
+        if (match) {
+            storageData.count++;
+            this.setStorageData(storageData);
+        }
+        var isTimeout = this.isTimeout(storageData.time);
+        window.setTimeout(function () {
+            var storageData = _this.getStorageData();
+            // 满足以下条件是就是被浏览器拦截了的情况
+            console.log(storageData.count < 2);
+            console.log(!isTimeout);
+            console.log(_this.isMatchHref(storageData.hrefArr));
+            debugger;
+            if (storageData.count < 2
+                && !isTimeout
+                && _this.isMatchHref(storageData.hrefArr)) {
+                // 重置
+                _this.setStorageData(_this.getNewStroageData());
+                // 关闭页面
+                window.close();
+            }
+        }, this.seconds);
+    };
+    /**
+     * 当前href是否命中
+     * @param hrefArr
+     */
+    OpenWindowBatcher.prototype.isMatchHref = function (hrefArr) {
+        return hrefArr.some(function (href) {
+            return window.location.href.includes(href);
         });
     };
     /**
-     * 获取前后端交集后的国际化数据
-     * @param {*} language
+     * 是否超时
+     * @param time
      */
-    TranslateManager.prototype.getMergeTranslateData = function (language) {
-        var _this = this;
-        // 没缓存就发起请求
-        return this.getDynamicTranslateData(language).then(function (res) {
-            var data = _this.staticTranslateData[language] || {};
-            // 部分国际化写在了前端，把前端的国际化文件合并到后端返回的数据中
-            merge(res, data);
-            if (isEmptyResult(res)) {
-                return Promise.reject(new Error('locale empty !!'));
-            }
-            return res;
-        });
+    OpenWindowBatcher.prototype.isTimeout = function (time) {
+        console.log(new Date().getTime(), Number(time));
+        return new Date().getTime() - Number(time) > this.seconds;
     };
     /**
-     * 深度合并
-     * @param d1
-     * @param d2
+     * 获取当前localstroage对应命名空间
      */
-    // deepMerge(d1, d2) {
-    //   let res = {};
-    //   Object.keys(d1).forEach((key) => {
-    //     res[key] = Object.assign({}, d1[key], d2[key]);
-    //   });
-    //   return res;
-    // }
+    OpenWindowBatcher.prototype.getStorageData = function () {
+        var storageData;
+        try {
+            storageData = JSON.parse(localStorage.getItem(this.storageKey)) || this.getNewStroageData();
+        }
+        catch (e) {
+            storageData = this.getNewStroageData();
+        }
+        return storageData;
+    };
+    /**
+     * 获取一个初始化的对象
+     */
+    OpenWindowBatcher.prototype.getNewStroageData = function () {
+        return {
+            count: 0,
+            hrefArr: [],
+            time: new Date().getTime()
+        };
+    };
+    /**
+     * 设置localstorage
+     * @param obj
+     */
+    OpenWindowBatcher.prototype.setStorageData = function (obj) {
+        localStorage.setItem(this.storageKey, JSON.stringify(obj));
+    };
     /**
      * 主方法
-     * @param locale 语种
-     * @param callback 回调函数，用于订制自己触发的渲染逻辑
+     * @param hrefArr 需要批量打开的链接数组
+     * @param callback 回调函数
      */
-    TranslateManager.prototype.update = function (locale, callback) {
-        var staticData = this.staticTranslateData[locale];
-        var cacheData = this.getCache(locale) || {};
-        // 使用静态数据和缓存数据的并集，触发第一次视图更新
-        merge(cacheData, staticData);
-        callback(cacheData, 'first');
-        // 返回静态和动态数据的合集
-        return this.getMergeTranslateData(locale).then(function (res) {
-            // 获取数据是否和动态数据不一致
-            if (res && !isEqual(res, cacheData)) {
-                callback(res, 'second');
-            }
+    OpenWindowBatcher.prototype.open = function (hrefArr, callback) {
+        var _this = this;
+        var obj = {
+            count: 0,
+            hrefArr: hrefArr,
+            time: new Date().getTime()
+        };
+        this.setStorageData(obj);
+        hrefArr.forEach(function (str) {
+            window.open(str, '_blank');
         });
+        var timer = setInterval(function () {
+            var count = _this.getStorageData()['count'];
+            // 若出于被拦截状态
+            if (count < 2) {
+                if (_this.callback) {
+                    _this.callback();
+                }
+                else if (callback) {
+                    callback();
+                }
+                clearInterval(timer);
+            }
+            else {
+                clearInterval(timer);
+            }
+        }, this.seconds);
     };
-    return TranslateManager;
+    return OpenWindowBatcher;
 }());
-export default TranslateManager;
+export default OpenWindowBatcher;
