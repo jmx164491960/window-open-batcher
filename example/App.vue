@@ -15,16 +15,10 @@ export default {
     batchOpen() {
       windowOpenBatcher.open(
         [
-          // 'https://www.baidu.com',
-          // 'https://www.npmjs.com/',
-          // 'https://juejin.im'
           'http://localhost:8080',
           'http://localhost:8080',
           'http://localhost:8080'
-        ],
-        () => {
-          alert('xxxx');
-        }
+        ]
       )
     }
   }

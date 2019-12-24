@@ -33,25 +33,6 @@ export default class OpenWindowBatcher {
       storageData.count ++;
       this.setStorageData(storageData);
     }
-
-    const isTimeout = this.isTimeout(storageData.time);
-    window.setTimeout(() => {
-      const storageData = this.getStorageData();
-      // 满足以下条件是就是被浏览器拦截了的情况
-      console.log(storageData.count < 2);
-      console.log(!isTimeout);
-      console.log(this.isMatchHref(storageData.hrefArr));
-      debugger
-      if (storageData.count < 2
-        && !isTimeout
-        && this.isMatchHref(storageData.hrefArr)
-      ) {
-        // 重置
-        this.setStorageData(this.getNewStroageData());
-        // 关闭页面
-        window.close();
-      }
-    }, this.seconds);
   }
   /**
    * 当前href是否命中
@@ -67,7 +48,6 @@ export default class OpenWindowBatcher {
    * @param time 
    */
   isTimeout(time: number): Boolean {
-    console.log(new Date().getTime(), Number(time));
     return new Date().getTime() - Number(time) > this.seconds;
   }
   /**
@@ -108,6 +88,14 @@ export default class OpenWindowBatcher {
    * @param callback 回调函数
    */
   open(hrefArr: Array<string>, callback?: Function) {
+    if (!hrefArr || hrefArr.length === 0) {
+      return;
+    }
+    if (hrefArr.length === 1) {
+      window.open(hrefArr[0]);
+      return;
+    }
+
     const obj = {
       count: 0,
       hrefArr,
@@ -118,18 +106,18 @@ export default class OpenWindowBatcher {
       window.open(str, '_blank');
     })
 
-    let timer = setInterval(() => {
+    // 若干秒后根据打开的页面数量判断
+    setTimeout(() => {
       const count = this.getStorageData()['count'];
       // 若出于被拦截状态
       if (count < 2) {
         if (this.callback) {
           this.callback();
+          // 重置
+          this.setStorageData(this.getNewStroageData())
         } else if (callback) {
           callback()
         }
-        clearInterval(timer)
-      } else {
-        clearInterval(timer)
       }
     }, this.seconds)
   }

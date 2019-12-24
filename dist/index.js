@@ -7,7 +7,6 @@ var OpenWindowBatcher = /** @class */ (function () {
         this.callback = params.callback || null;
     }
     OpenWindowBatcher.prototype.check = function () {
-        var _this = this;
         var storageData = this.getStorageData();
         // 超时了不运行
         if (!storageData.time || this.isTimeout(storageData.time)) {
@@ -19,23 +18,6 @@ var OpenWindowBatcher = /** @class */ (function () {
             storageData.count++;
             this.setStorageData(storageData);
         }
-        var isTimeout = this.isTimeout(storageData.time);
-        window.setTimeout(function () {
-            var storageData = _this.getStorageData();
-            // 满足以下条件是就是被浏览器拦截了的情况
-            console.log(storageData.count < 2);
-            console.log(!isTimeout);
-            console.log(_this.isMatchHref(storageData.hrefArr));
-            debugger;
-            if (storageData.count < 2
-                && !isTimeout
-                && _this.isMatchHref(storageData.hrefArr)) {
-                // 重置
-                _this.setStorageData(_this.getNewStroageData());
-                // 关闭页面
-                window.close();
-            }
-        }, this.seconds);
     };
     /**
      * 当前href是否命中
@@ -51,7 +33,6 @@ var OpenWindowBatcher = /** @class */ (function () {
      * @param time
      */
     OpenWindowBatcher.prototype.isTimeout = function (time) {
-        console.log(new Date().getTime(), Number(time));
         return new Date().getTime() - Number(time) > this.seconds;
     };
     /**
@@ -94,6 +75,13 @@ var OpenWindowBatcher = /** @class */ (function () {
      */
     OpenWindowBatcher.prototype.open = function (hrefArr, callback) {
         var _this = this;
+        if (!hrefArr || hrefArr.length === 0) {
+            return;
+        }
+        if (hrefArr.length === 1) {
+            window.open(hrefArr[0]);
+            return;
+        }
         var obj = {
             count: 0,
             hrefArr: hrefArr,
@@ -103,20 +91,19 @@ var OpenWindowBatcher = /** @class */ (function () {
         hrefArr.forEach(function (str) {
             window.open(str, '_blank');
         });
-        var timer = setInterval(function () {
+        // 若干秒后根据打开的页面数量判断
+        setTimeout(function () {
             var count = _this.getStorageData()['count'];
             // 若出于被拦截状态
             if (count < 2) {
                 if (_this.callback) {
                     _this.callback();
+                    // 重置
+                    _this.setStorageData(_this.getNewStroageData());
                 }
                 else if (callback) {
                     callback();
                 }
-                clearInterval(timer);
-            }
-            else {
-                clearInterval(timer);
             }
         }, this.seconds);
     };
